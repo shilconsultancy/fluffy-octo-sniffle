@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Organization;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
@@ -37,9 +38,19 @@ class SettingsController extends Controller
             'company_language' => 'nullable|string|max:10',
             'company_regional_format' => 'nullable|string|max:20',
             'company_timezone' => 'nullable|string|max:255',
+            'active_tab' => 'required|string', // For remembering the tab
         ]);
 
-        $organization = Auth::user()->organization;
+        $user = Auth::user();
+        $organization = $user->organization;
+
+        if (!$organization) {
+            $organization = Organization::create(['name' => $user->name . '\'s Team']);
+            $user->organization_id = $organization->id;
+            $user->save();
+            $user->refresh();
+            $organization = $user->organization;
+        }
 
         if ($request->hasFile('company_logo')) {
             if ($oldLogo = setting('company_logo')) {
@@ -48,6 +59,10 @@ class SettingsController extends Controller
             $path = $request->file('company_logo')->store('logos', 'public');
             $validatedData['company_logo'] = $path;
         }
+        
+        // Unset active_tab before looping through settings
+        $activeTab = $validatedData['active_tab'];
+        unset($validatedData['active_tab']);
 
         foreach ($validatedData as $key => $value) {
             $organization->settings()->updateOrCreate(['key' => $key], ['value' => $value]);
@@ -55,7 +70,7 @@ class SettingsController extends Controller
 
         Cache::forget("settings.org.{$organization->id}");
 
-        return redirect()->route('settings.index')->with('status', 'settings-updated');
+        return redirect()->route('settings.index', ['tab' => $activeTab])->with('status', 'settings-updated');
     }
 
     /**
@@ -64,8 +79,9 @@ class SettingsController extends Controller
     public function updateProfileSettings(Request $request)
     {
         $user = Auth::user();
+        $activeTab = $request->input('active_tab', 'profile');
 
-        if ($request->has('name')) {
+        if ($request->has('name') || $request->hasFile('avatar')) {
             $validatedData = $request->validate([
                 'name' => 'required|string|max:255',
                 'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users')->ignore($user->id)],
@@ -91,7 +107,7 @@ class SettingsController extends Controller
             $user->update(['password' => Hash::make($request->password)]);
         }
 
-        return redirect()->route('settings.index')->with('status', 'settings-updated');
+        return redirect()->route('settings.index', ['tab' => $activeTab])->with('status', 'settings-updated');
     }
 
     /**
@@ -113,14 +129,27 @@ class SettingsController extends Controller
             // Invoice & Billing
             'financial_invoice_number_format' => 'nullable|string|max:255',
             'financial_default_payment_terms' => 'nullable|integer|min:0',
+            'active_tab' => 'required|string', // For remembering the tab
         ]);
 
-        $organization = Auth::user()->organization;
+        $user = Auth::user();
+        $organization = $user->organization;
         
+        if (!$organization) {
+            $organization = Organization::create(['name' => $user->name . '\'s Team']);
+            $user->organization_id = $organization->id;
+            $user->save();
+            $user->refresh();
+            $organization = $user->organization;
+        }
+        
+        // Unset active_tab before looping through settings
+        $activeTab = $validatedData['active_tab'];
+        unset($validatedData['active_tab']);
+
         // Handle checkbox values
         $validatedData['financial_multi_currency'] = $request->has('financial_multi_currency') ? 'enabled' : 'disabled';
         $validatedData['financial_tax_inclusive_pricing'] = $request->has('financial_tax_inclusive_pricing') ? 'inclusive' : 'exclusive';
-
 
         foreach ($validatedData as $key => $value) {
             $organization->settings()->updateOrCreate(['key' => $key], ['value' => $value]);
@@ -128,6 +157,6 @@ class SettingsController extends Controller
 
         Cache::forget("settings.org.{$organization->id}");
 
-        return redirect()->route('settings.index')->with('status', 'settings-updated');
+        return redirect()->route('settings.index', ['tab' => $activeTab])->with('status', 'settings-updated');
     }
 }

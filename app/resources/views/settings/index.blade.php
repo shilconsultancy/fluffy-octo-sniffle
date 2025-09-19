@@ -3,10 +3,10 @@
 @section('title', 'Settings')
 
 @section('content')
-<div class="max-w-7xl mx-auto" x-data="{ activePage: 'company' }">
+{{-- Read the 'tab' query parameter from the URL, defaulting to 'company' --}}
+<div class="max-w-7xl mx-auto" x-data="{ activePage: '{{ request()->query('tab', 'company') }}' }">
     <div class="flex flex-col md:flex-row md:space-x-6">
 
-        <!-- Left Column: Navigation -->
         <div class="md:w-1/3 lg:w-1/4 flex-shrink-0">
             <div class="bg-white rounded-xl shadow-sm border border-macgray-200 p-4">
                 <nav class="space-y-4">
@@ -44,31 +44,29 @@
             </div>
         </div>
 
-        <!-- Right Column: Content -->
         <div class="flex-1 mt-6 md:mt-0">
-             <!-- Success Message Feedback -->
-            @if (session('status') === 'settings-updated')
+             @if (session('status') === 'settings-updated')
                 <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-lg relative mb-6" role="alert">
                     <span class="block sm:inline">Settings have been updated successfully!</span>
                 </div>
             @endif
 
-            <!-- Company Settings Page -->
             <div x-show="activePage === 'company'" style="display: none;">
                 <form action="{{ route('settings.company.update') }}" method="POST" enctype="multipart/form-data">
                     @csrf
+                    {{-- Hidden input to send the active tab name --}}
+                    <input type="hidden" name="active_tab" value="company">
                     <div class="bg-white rounded-xl shadow-sm border border-macgray-200">
                         <div class="p-6">
                             <h2 class="text-xl font-semibold text-macgray-800">Company Settings</h2>
                             <p class="text-sm text-macgray-500 mt-1">Manage your organization's core details and branding.</p>
                             <div class="mt-6 space-y-6">
-                                <!-- Company Information Section -->
                                 <div class="space-y-4 p-4 border rounded-lg">
                                     <h3 class="font-medium text-macgray-800">Company Information</h3>
                                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                                         <div>
                                             <label for="company_name" class="block text-sm font-medium text-macgray-700">Company Name</label>
-                                            <input type="text" name="company_name" id="company_name" value="{{ setting('company_name', Auth::user()->organization->name) }}" class="mt-1 block w-full rounded-md border-macgray-300 shadow-sm sm:text-sm">
+                                            <input type="text" name="company_name" id="company_name" value="{{ setting('company_name', Auth::user()->organization?->name) }}" class="mt-1 block w-full rounded-md border-macgray-300 shadow-sm sm:text-sm">
                                         </div>
                                         <div>
                                             <label for="company_registration_number" class="block text-sm font-medium text-macgray-700">Registration Number</label>
@@ -94,7 +92,6 @@
                                         <input type="url" name="company_website" id="company_website" value="{{ setting('company_website') }}" class="mt-1 block w-full rounded-md border-macgray-300 shadow-sm sm:text-sm">
                                     </div>
                                 </div>
-                                <!-- Logo & Branding Section -->
                                 <div class="space-y-4 p-4 border rounded-lg">
                                      <h3 class="font-medium text-macgray-800">Logo & Branding</h3>
                                      <div>
@@ -111,7 +108,6 @@
                                         <input type="color" name="company_branding_color" id="company_branding_color" value="{{ setting('company_branding_color', '#3d6bff') }}" class="mt-1 h-10 w-20 block rounded-md border-macgray-300 shadow-sm">
                                     </div>
                                 </div>
-                                <!-- Region & Formats Section -->
                                 <div class="space-y-4 p-4 border rounded-lg">
                                     <h3 class="font-medium text-macgray-800">Language, Region & Formats</h3>
                                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -150,16 +146,16 @@
                 </form>
             </div>
 
-            <!-- Profile Settings Page -->
             <div x-show="activePage === 'profile'" style="display: none;">
                 <form action="{{ route('settings.profile.update') }}" method="POST" enctype="multipart/form-data">
                      @csrf
+                     {{-- Hidden input to send the active tab name --}}
+                    <input type="hidden" name="active_tab" value="profile">
                     <div class="bg-white rounded-xl shadow-sm border border-macgray-200">
                         <div class="p-6">
                             <h2 class="text-xl font-semibold text-macgray-800">Profile Settings</h2>
                             <p class="text-sm text-macgray-500 mt-1">Manage your personal information and security.</p>
                              <div class="mt-6 space-y-6">
-                                <!-- Profile Information -->
                                 <div class="space-y-4 p-4 border rounded-lg">
                                     <h3 class="font-medium text-macgray-800">Personal Details</h3>
                                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -180,14 +176,13 @@
                                         <label class="block text-sm font-medium text-macgray-700">Profile Picture</label>
                                         <div class="mt-2 flex items-center space-x-4">
                                             @if(Auth::user()->avatar)
-                                                <img src="{{ asset('storage/' . Auth::user()->avatar) }}" alt="User Avatar" class="h-16 w-16 rounded-full object-cover">
+                                                <img src="{{ Auth::user()->avatar_url }}" alt="User Avatar" class="h-16 w-16 rounded-full object-cover">
                                             @endif
                                             <input type="file" name="avatar" id="avatar" class="text-sm">
                                         </div>
                                     </div>
                                 </div>
-                                 <!-- Password Management -->
-                                <div class="space-y-4 p-4 border rounded-lg">
+                                 <div class="space-y-4 p-4 border rounded-lg">
                                     <h3 class="font-medium text-macgray-800">Password</h3>
                                     <div>
                                         <label for="current_password" class="block text-sm font-medium text-macgray-700">Current Password</label>
@@ -214,17 +209,17 @@
                     </div>
                 </form>
             </div>
-            
-            <!-- Financial Settings Page -->
+
             <div x-show="activePage === 'financial'" style="display: none;">
                  <form action="{{ route('settings.financial.update') }}" method="POST">
                     @csrf
+                    {{-- Hidden input to send the active tab name --}}
+                    <input type="hidden" name="active_tab" value="financial">
                     <div class="bg-white rounded-xl shadow-sm border border-macgray-200">
                         <div class="p-6">
                              <h2 class="text-xl font-semibold text-macgray-800">Financial Settings</h2>
                             <p class="text-sm text-macgray-500 mt-1">Configure your organization's financial backbone.</p>
                             <div class="mt-6 space-y-6">
-                                <!-- Currency Section -->
                                 <div class="space-y-4 p-4 border rounded-lg">
                                     <h3 class="font-medium text-macgray-800">Currency Settings</h3>
                                     <div>
@@ -254,7 +249,6 @@
                                         </select>
                                     </div>
                                 </div>
-                                <!-- Tax Section -->
                                 <div class="space-y-4 p-4 border rounded-lg">
                                     <h3 class="font-medium text-macgray-800">Tax Settings</h3>
                                      <div>
@@ -270,13 +264,11 @@
                                             <p class="text-macgray-500">Check if item prices already include tax.</p>
                                         </div>
                                     </div>
-                                    <!-- Placeholder for Multiple Tax Rates -->
                                     <div>
                                         <label class="block text-sm font-medium text-macgray-700">Multiple Tax Rates</label>
                                         <p class="text-sm text-macgray-500 mt-1">Functionality to create and manage multiple tax rates (e.g., VAT, GST) will be added here.</p>
                                     </div>
                                 </div>
-                                <!-- Fiscal Year Section -->
                                 <div class="space-y-4 p-4 border rounded-lg">
                                     <h3 class="font-medium text-macgray-800">Fiscal Year</h3>
                                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -298,7 +290,6 @@
                                         </div>
                                     </div>
                                 </div>
-                                <!-- Invoice & Billing Section -->
                                 <div class="space-y-4 p-4 border rounded-lg">
                                     <h3 class="font-medium text-macgray-800">Invoice & Billing</h3>
                                     <div>
@@ -321,8 +312,7 @@
                     </div>
                  </form>
             </div>
-            
-            <!-- Placeholder Pages -->
+
             <div x-show="activePage === 'user_roles'" style="display: none;" class="p-6"><h2 class="text-xl font-semibold text-macgray-800">User & Role Management</h2></div>
             <div x-show="activePage === 'notifications'" style="display: none;" class="p-6"><h2 class="text-xl font-semibold text-macgray-800">Notifications</h2></div>
             <div x-show="activePage === 'integrations'" style="display: none;" class="p-6"><h2 class="text-xl font-semibold text-macgray-800">Integration Settings</h2></div>
@@ -334,6 +324,5 @@
         </div>
     </div>
 </div>
-<!-- AlpineJS for UI functionality -->
 <script src="//unpkg.com/alpinejs" defer></script>
 @endsection

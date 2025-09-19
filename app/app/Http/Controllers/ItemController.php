@@ -3,8 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\Item;
+use App\Models\Organization;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\Rule;
 
 class ItemController extends Controller
 {
@@ -13,7 +15,19 @@ class ItemController extends Controller
      */
     public function index()
     {
-        $items = Auth::user()->organization->items()->latest()->paginate(15);
+        $user = Auth::user();
+        $organization = $user->organization;
+
+        // **FIX:** If the user has no organization, create one.
+        if (!$organization) {
+            $organization = Organization::create(['name' => $user->name . '\'s Team']);
+            $user->organization_id = $organization->id;
+            $user->save();
+            $user->refresh();
+            $organization = $user->organization;
+        }
+
+        $items = $organization->items()->paginate(10);
         return view('items.index', compact('items'));
     }
 
@@ -30,16 +44,30 @@ class ItemController extends Controller
      */
     public function store(Request $request)
     {
+        $user = Auth::user();
+        $organization = $user->organization;
+
+        // **FIX:** If the user has no organization, create one.
+        if (!$organization) {
+            $organization = Organization::create(['name' => $user->name . '\'s Team']);
+            $user->organization_id = $organization->id;
+            $user->save();
+            $user->refresh();
+            $organization = $user->organization;
+        }
+        
         $validatedData = $request->validate([
             'name' => 'required|string|max:255',
-            'sku' => 'nullable|string|max:255',
+            'sku' => ['nullable', 'string', 'max:255', Rule::unique('items')->where(function ($query) use ($organization) {
+                return $query->where('organization_id', $organization->id);
+            })],
             'description' => 'nullable|string',
-            'type' => 'required|in:product,service',
+            'type' => 'required|string|in:product,service',
             'sale_price' => 'required|numeric|min:0',
             'purchase_price' => 'nullable|numeric|min:0',
         ]);
 
-        Auth::user()->organization->items()->create($validatedData);
+        $organization->items()->create($validatedData);
 
         return redirect()->route('items.index')->with('success', 'Item created successfully.');
     }
@@ -49,11 +77,9 @@ class ItemController extends Controller
      */
     public function edit(Item $item)
     {
-        // Authorization check
         if ($item->organization_id !== Auth::user()->organization_id) {
-            abort(403);
+            abort(403, 'Unauthorized action.');
         }
-
         return view('items.edit', compact('item'));
     }
 
@@ -62,16 +88,19 @@ class ItemController extends Controller
      */
     public function update(Request $request, Item $item)
     {
-        // Authorization check
         if ($item->organization_id !== Auth::user()->organization_id) {
-            abort(403);
+            abort(403, 'Unauthorized action.');
         }
+        
+        $organization = Auth::user()->organization;
 
         $validatedData = $request->validate([
             'name' => 'required|string|max:255',
-            'sku' => 'nullable|string|max:255',
+            'sku' => ['nullable', 'string', 'max:255', Rule::unique('items')->where(function ($query) use ($organization) {
+                return $query->where('organization_id', $organization->id);
+            })->ignore($item->id)],
             'description' => 'nullable|string',
-            'type' => 'required|in:product,service',
+            'type' => 'required|string|in:product,service',
             'sale_price' => 'required|numeric|min:0',
             'purchase_price' => 'nullable|numeric|min:0',
         ]);
@@ -86,13 +115,11 @@ class ItemController extends Controller
      */
     public function destroy(Item $item)
     {
-        // Authorization check
         if ($item->organization_id !== Auth::user()->organization_id) {
-            abort(403);
+            abort(403, 'Unauthorized action.');
         }
-
+        
         $item->delete();
-
         return redirect()->route('items.index')->with('success', 'Item deleted successfully.');
     }
 }
