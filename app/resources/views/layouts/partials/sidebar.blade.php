@@ -81,7 +81,7 @@
                         <i data-feather="chevron-down" class="w-4 h-4 transition-transform transform"></i>
                     </div>
                     <ul class="pl-4 mt-1 space-y-1 hidden">
-                        <li><a href="#" class="sidebar-subitem block px-3 py-2 rounded-md text-sm text-macgray-300 hover:text-white">Customers</a></li>
+                        <li><a href="{{ route('customers.index') }}" class="sidebar-subitem block px-3 py-2 rounded-md text-sm text-macgray-300 hover:text-white">Customers</a></li>
                         <li><a href="#" class="sidebar-subitem block px-3 py-2 rounded-md text-sm text-macgray-300 hover:text-white">Quotes</a></li>
                         <li><a href="#" class="sidebar-subitem block px-3 py-2 rounded-md text-sm text-macgray-300 hover:text-white">Invoices</a></li>
                         <li><a href="#" class="sidebar-subitem block px-3 py-2 rounded-md text-sm text-macgray-300 hover:text-white">Sales Receipts</a></li>

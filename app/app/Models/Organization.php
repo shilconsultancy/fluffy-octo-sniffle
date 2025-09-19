@@ -42,4 +42,12 @@ class Organization extends Model
     {
         return $this->hasMany(Item::class);
     }
+    
+    /**
+     * Get the customers for the organization.
+     */
+    public function customers(): HasMany
+    {
+        return $this->hasMany(Customer::class);
+    }
 }
