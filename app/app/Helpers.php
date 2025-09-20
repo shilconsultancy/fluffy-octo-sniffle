@@ -24,7 +24,14 @@ if (! function_exists('setting')) {
             return $organization->settings()->pluck('value', 'key');
         });
 
-        return $settings[$key] ?? $default;
+        $value = $settings[$key] ?? $default;
+
+        // Debug: Log when settings are accessed
+        if ($key === 'company_name' || $key === 'company_logo') {
+            \Log::info("Setting accessed: {$key} = " . ($value ?: 'NULL') . " (default: " . ($default ?: 'NULL') . ")");
+        }
+
+        return $value;
     }
 }
 

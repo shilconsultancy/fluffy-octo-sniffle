@@ -38,6 +38,18 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Invoices routes
     Route::resource('invoices', InvoiceController::class);
+
+    // Debug route to check settings
+    Route::get('/debug-settings', function () {
+        $settings = auth()->user()->organization->settings;
+        return response()->json([
+            'organization' => auth()->user()->organization->name,
+            'settings_count' => $settings->count(),
+            'settings' => $settings->pluck('value', 'key'),
+            'company_name' => setting('company_name'),
+            'company_logo' => setting('company_logo'),
+        ]);
+    });
 });
 
 require __DIR__.'/auth.php';

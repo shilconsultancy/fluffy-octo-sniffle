@@ -58,16 +58,46 @@ class SettingsController extends Controller
             }
             $path = $request->file('company_logo')->store('logos', 'public');
             $validatedData['company_logo'] = $path;
+        } else {
+            // Remove company_logo from validatedData if no file was uploaded
+            unset($validatedData['company_logo']);
         }
         
-        // Unset active_tab before looping through settings
+        // Unset active_tab and file uploads before looping through settings
         $activeTab = $validatedData['active_tab'];
         unset($validatedData['active_tab']);
+        unset($validatedData['company_logo']);
+
+        // Debug: Show all submitted data first
+        echo "<h3>All Submitted Data:</h3>";
+        echo "<pre>";
+        var_dump($request->all());
+        echo "</pre>";
 
         foreach ($validatedData as $key => $value) {
-            $organization->settings()->updateOrCreate(['key' => $key], ['value' => $value]);
+            // Skip null or empty keys to avoid database constraint violations
+            // Only process valid string/numeric values
+            if (is_string($key) && !empty($key) && $key !== '' &&
+                ($value === null || is_string($value) || is_numeric($value) || is_bool($value))) {
+
+                // Convert boolean values to strings for storage
+                if (is_bool($value)) {
+                    $value = $value ? '1' : '0';
+                }
+
+                // Convert numeric values to strings for storage
+                if (is_numeric($value)) {
+                    $value = (string) $value;
+                }
+
+                $organization->settings()->updateOrCreate(
+                    ['key' => $key],
+                    ['value' => $value]
+                );
+            }
         }
 
+        // Clear the settings cache to ensure fresh data is loaded
         Cache::forget("settings.org.{$organization->id}");
 
         return redirect()->route('settings.index', ['tab' => $activeTab])->with('status', 'settings-updated');
@@ -151,8 +181,26 @@ class SettingsController extends Controller
         $validatedData['financial_multi_currency'] = $request->has('financial_multi_currency') ? 'enabled' : 'disabled';
         $validatedData['financial_tax_inclusive_pricing'] = $request->has('financial_tax_inclusive_pricing') ? 'inclusive' : 'exclusive';
 
+        // Debug: Show all submitted data first
+        echo "<h3>All Submitted Financial Data:</h3>";
+        echo "<pre>";
+        var_dump($request->all());
+        echo "</pre>";
+
         foreach ($validatedData as $key => $value) {
-            $organization->settings()->updateOrCreate(['key' => $key], ['value' => $value]);
+            // Debug: Print what we're processing
+            echo "Processing financial: key='{$key}', value='{$value}', value_type=" . gettype($value) . "<br>";
+
+            // Skip null or empty keys to avoid database constraint violations
+            // Check for null keys, empty keys, null values, empty string values, and empty arrays
+            if (!empty($key) && $key !== null && $key !== '' &&
+                !empty($value) && $value !== null && $value !== '' &&
+                (!is_array($value) || !empty($value))) {
+                $organization->settings()->updateOrCreate(['key' => $key], ['value' => $value]);
+            } else {
+                // Log skipped settings for debugging
+                echo "SKIPPED financial: key='{$key}', value='{$value}', value_type=" . gettype($value) . "<br>";
+            }
         }
 
         Cache::forget("settings.org.{$organization->id}");

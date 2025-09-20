@@ -10,6 +10,7 @@
         currencySymbol: '{{ currency_symbol() }}'
      })">
     <form action="{{ route('quotes.store') }}" method="POST">
+        @csrf
         {{-- ... form content ... --}}
         {{-- The form content remains the same, only the x-data and script below change --}}
         
