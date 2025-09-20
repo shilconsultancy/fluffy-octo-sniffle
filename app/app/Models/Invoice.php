@@ -12,6 +12,7 @@ class Invoice extends Model
     use HasFactory;
 
     protected $fillable = [
+        'organization_id',
         'customer_id',
         'invoice_number',
         'invoice_date',
@@ -20,18 +21,17 @@ class Invoice extends Model
         'subtotal',
         'total_amount',
     ];
+    
+    public function organization(): BelongsTo
+    {
+        return $this->belongsTo(Organization::class);
+    }
 
-    /**
-     * An invoice belongs to a customer.
-     */
     public function customer(): BelongsTo
     {
         return $this->belongsTo(Customer::class);
     }
 
-    /**
-     * An invoice has many line items.
-     */
     public function items(): HasMany
     {
         return $this->hasMany(InvoiceItem::class);
