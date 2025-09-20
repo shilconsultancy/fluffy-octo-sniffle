@@ -6,6 +6,7 @@ use App\Http\Controllers\ItemController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\QuoteController;
 use App\Http\Controllers\SettingsController;
+use App\Http\Controllers\InvoiceController;
 use Illuminate\Support\Facades\Route;
 
 // Publicly accessible routes
@@ -34,6 +35,9 @@ Route::middleware('auth')->group(function () {
     Route::resource('quotes', QuoteController::class);
     Route::resource('items', ItemController::class);
     Route::resource('customers', CustomerController::class);
+
+    // Invoices routes  
+    Route::resource('invoices', InvoiceController::class);
 
 });
 

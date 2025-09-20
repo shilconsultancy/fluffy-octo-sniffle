@@ -58,4 +58,20 @@ class Organization extends Model
     {
         return $this->hasMany(Quote::class);
     }
+
+    /**
+     * Get the invoices for the organization.
+     */
+    public function invoices(): HasMany
+    {
+        return $this->hasMany(Invoice::class);
+    }
+
+    /**
+     * Get the payments received for the organization.
+     */
+    public function paymentsReceived(): HasMany
+    {
+        return $this->hasMany(PaymentReceived::class);
+    }
 }
