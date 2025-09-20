@@ -2,32 +2,24 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Customer;
 use App\Models\Invoice;
-use App\Models\Organization;
+use App\Models\Customer;
+use App\Models\Item;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class InvoiceController extends Controller
 {
     /**
-     * Display a listing of invoices.
+     * Display a listing of the invoices.
      */
     public function index()
     {
-        $user = Auth::user();
-        $organization = $user->organization;
+        $invoices = Invoice::with('customer')
+                           ->latest()
+                           ->paginate(10);
 
-        // Create a default organization if one doesn't exist for the user
-        if (!$organization) {
-            $organization = Organization::create(['name' => $user->name . '\'s Team']);
-            $user->update(['organization_id' => $organization->id]);
-            $user->refresh();
-            $organization = $user->organization;
-        }
-
-        $invoices = $organization->invoices()->with('customer')->latest()->paginate(10);
         return view('invoices.index', compact('invoices'));
     }
 
@@ -36,19 +28,11 @@ class InvoiceController extends Controller
      */
     public function create()
     {
-        $user = Auth::user();
-        $organization = $user->organization;
+        // The global scope on Customer and Item models ensures only the correct data is retrieved.
+        $customers = Customer::all();
+        $items = Item::all();
 
-        // Create a default organization if one doesn't exist for the user
-        if (!$organization) {
-            $organization = Organization::create(['name' => $user->name . '\'s Team']);
-            $user->update(['organization_id' => $organization->id]);
-            $user->refresh();
-            $organization = $user->organization;
-        }
-        
-        $customers = $organization->customers()->get();
-        return view('invoices.create', compact('customers'));
+        return view('invoices.create', compact('customers', 'items'));
     }
 
     /**
@@ -56,46 +40,54 @@ class InvoiceController extends Controller
      */
     public function store(Request $request)
     {
-        $validatedData = $request->validate([
-            'customer_id' => 'required|exists:customers,id',
-            'invoice_date' => 'required|date',
-            'due_date' => 'required|date|after_or_equal:invoice_date',
-            'items' => 'required|array|min:1',
-            'items.*.item_description' => 'required|string|max:255',
-            'items.*.quantity' => 'required|integer|min:1',
-            'items.*.unit_price' => 'required|numeric|min:0.01',
+        $validated = $request->validate([
+            'customer_id' => ['required', 'exists:customers,id'],
+            'invoice_number' => ['required', 'string', 'max:255', 'unique:invoices,invoice_number'],
+            'invoice_date' => ['required', 'date'],
+            'due_date' => ['required', 'date', 'after_or_equal:invoice_date'],
+            'notes' => ['nullable', 'string'],
+            'items' => ['required', 'array', 'min:1'],
+            'items.*.item_name' => ['required', 'string', 'max:255'],
+            'items.*.description' => ['nullable', 'string'],
+            'items.*.quantity' => ['required', 'integer', 'min:1'],
+            'items.*.unit_price' => ['required', 'numeric', 'min:0'],
         ]);
 
-        $organization = Auth::user()->organization;
+        try {
+            DB::beginTransaction();
 
-        DB::transaction(function () use ($validatedData, $organization) {
-            $subtotal = collect($validatedData['items'])->sum(function ($item) {
-                return $item['quantity'] * $item['unit_price'];
-            });
+            $total = 0;
+            foreach ($validated['items'] as $item) {
+                $total += $item['quantity'] * $item['unit_price'];
+            }
 
-            $invoiceNumber = 'INV-' . now()->format('YmdHis');
-
-            $invoice = $organization->invoices()->create([
-                'customer_id' => $validatedData['customer_id'],
-                'invoice_number' => $invoiceNumber,
-                'invoice_date' => $validatedData['invoice_date'],
-                'due_date' => $validatedData['due_date'],
-                'subtotal' => $subtotal,
-                'total_amount' => $subtotal,
-                'status' => 'Draft',
+            $invoice = Invoice::create([
+                'organization_id' => auth()->user()->organization_id,
+                'customer_id' => $validated['customer_id'],
+                'invoice_number' => $validated['invoice_number'],
+                'invoice_date' => $validated['invoice_date'],
+                'due_date' => $validated['due_date'],
+                'total' => $total,
+                'notes' => $validated['notes'],
             ]);
 
-            foreach ($validatedData['items'] as $item) {
+            foreach ($validated['items'] as $item) {
                 $invoice->items()->create([
-                    'item_description' => $item['item_description'],
+                    'item_name' => $item['item_name'],
+                    'description' => $item['description'],
                     'quantity' => $item['quantity'],
                     'unit_price' => $item['unit_price'],
-                    'line_total' => $item['quantity'] * $item['unit_price'],
+                    'total' => $item['quantity'] * $item['unit_price'],
                 ]);
             }
-        });
 
-        return redirect()->route('invoices.index')->with('success', 'Invoice created successfully!');
+            DB::commit();
+
+            return redirect()->route('invoices.index')->with('success', 'Invoice created successfully.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return redirect()->back()->with('error', 'Failed to create invoice. Please try again.');
+        }
     }
 
     /**
@@ -103,11 +95,16 @@ class InvoiceController extends Controller
      */
     public function show(Invoice $invoice)
     {
-        if ($invoice->organization_id !== Auth::user()->organization_id) {
-            abort(403);
-        }
-
         $invoice->load('customer', 'items');
         return view('invoices.show', compact('invoice'));
+    }
+
+    /**
+     * Remove the specified invoice from storage.
+     */
+    public function destroy(Invoice $invoice)
+    {
+        $invoice->delete();
+        return redirect()->route('invoices.index')->with('success', 'Invoice deleted successfully.');
     }
 }

@@ -10,19 +10,34 @@ class InvoiceItem extends Model
 {
     use HasFactory;
 
+    /**
+     * The attributes that are mass assignable.
+     *
+     * @var array
+     */
     protected $fillable = [
         'invoice_id',
-        'item_description',
+        'item_id',
+        'item_name',
+        'description',
         'quantity',
         'unit_price',
-        'line_total',
+        'total',
     ];
 
     /**
-     * An invoice item belongs to an invoice.
+     * Get the invoice that owns the item.
      */
     public function invoice(): BelongsTo
     {
         return $this->belongsTo(Invoice::class);
+    }
+
+    /**
+     * Get the item associated with the invoice item.
+     */
+    public function item(): BelongsTo
+    {
+        return $this->belongsTo(Item::class);
     }
 }
