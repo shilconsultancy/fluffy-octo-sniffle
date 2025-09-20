@@ -1,10 +1,11 @@
 <?php
 
-use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\SettingsController;
+use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ItemController;
-use App\Http\Controllers\CustomerController; // <-- ADD THIS
+use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\QuoteController;
+use App\Http\Controllers\SettingsController;
 use Illuminate\Support\Facades\Route;
 
 // Publicly accessible routes
@@ -29,8 +30,10 @@ Route::middleware('auth')->group(function () {
     Route::post('/settings/financial', [SettingsController::class, 'updateFinancialSettings'])->name('settings.financial.update');
     
     // Resource routes
+    Route::get('quotes/{quote}/print', [QuoteController::class, 'print'])->name('quotes.print');
+    Route::resource('quotes', QuoteController::class);
     Route::resource('items', ItemController::class);
-    Route::resource('customers', CustomerController::class); // <-- ADD THIS
+    Route::resource('customers', CustomerController::class);
 
 });
 

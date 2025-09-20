@@ -13,6 +13,13 @@ return new class extends Migration
     {
         Schema::create('quote_items', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('quote_id')->constrained()->onDelete('cascade');
+            $table->foreignId('item_id')->constrained()->onDelete('cascade');
+            $table->text('description')->nullable(); // <-- ADDED ->nullable()
+            $table->decimal('quantity', 15, 2);
+            $table->decimal('unit_price', 15, 2);
+            $table->decimal('tax_rate', 5, 2)->default(0.00);
+            $table->decimal('total', 15, 2);
             $table->timestamps();
         });
     }

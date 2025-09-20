@@ -50,4 +50,12 @@ class Organization extends Model
     {
         return $this->hasMany(Customer::class);
     }
+
+    /**
+     * Get the quotes for the organization.
+     */
+    public function quotes(): HasMany
+    {
+        return $this->hasMany(Quote::class);
+    }
 }
